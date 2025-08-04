@@ -1,7 +1,6 @@
-const {spawn} = require('child_process');
+import {spawn} from 'node:child_process';
 
-function runAngular(mode, ip) {
-  console.log(`Launching Angular app in development mode on http://${ip}:4200...`);
+export function runAngular(ip: string) {
   const ngServe = spawn('npx', ['ng', 'serve', '--host', ip, '--configuration=development'], {
     stdio: 'inherit',
     shell: true,
@@ -14,8 +13,4 @@ function runAngular(mode, ip) {
   ngServe.on('exit', (code) => {
     console.log(`ng serve exited with code ${code}`);
   });
-
 }
-
-module.exports = {runAngular};
-

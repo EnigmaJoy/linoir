@@ -12,7 +12,9 @@ interface ServerConfig {
 @Component({
   selector: 'lin-root',
   template: `
-    <router-outlet/>
+    <div class="vw-100 vh-100">
+      <router-outlet/>
+    </div>
   `,
   imports: [
     RouterOutlet

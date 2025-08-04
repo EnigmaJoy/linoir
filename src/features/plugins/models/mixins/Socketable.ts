@@ -1,7 +1,6 @@
 import {Observable} from 'rxjs';
 import {Message, WebsocketService} from '../../../../common/services/websocket.service';
-import {BaseMessagePayload} from '../../entities/_index';
-import {Constructor} from '../../entities/constructor';
+import {BaseMessagePayload, Constructor} from '../../entities';
 
 /**
  * A mixin function that adds WebSocket-related functionality to a base class.
@@ -18,71 +17,50 @@ export function Socketable<
     key(): string;
     webSocketService: WebsocketService;
     configuration: GenericConfig;
+    updateConfiguration(configuration: Partial<GenericConfig>): void;
+    resetConfiguration(): void;
+    defaultConfig: GenericConfig;
   }>
 >(Base: TBase) {
-  return class extends Base {
-    /**
-     * Extends the base class constructor to set up a WebSocket subscription.
-     * Updates the configuration whenever a new message is received.
-     *
-     * @param args - Arguments to pass to the base class constructor.
-     */
-    constructor(...args: any[]) {
+  return class extends Base implements SocketableInterface<GenericConfig> {
+
+    public constructor(...args: any[]) {
       super(...args);
       this.listenTopic().subscribe((res: Message<GenericConfig>): void => {
-        res.payload.lastUpdatedAt = new Date();
         this.configuration = res.payload;
       });
     }
 
-    /**
-     * Subscribes to a WebSocket topic using the key provided by the base class.
-     *
-     * @returns An observable that emits messages from the WebSocket topic.
-     */
-    listenTopic(): Observable<Message<GenericConfig>> {
-      return this.webSocketService.subscribe<GenericConfig>(this.key());
+    public listenTopic(): Observable<Message<GenericConfig>> {
+      return this.webSocketService.subscribeToLatestMessage<GenericConfig>(this.key());
     }
 
-    /**
-     * Sends a message to the WebSocket topic associated with the key provided by the base class.
-     *
-     * @param message - The message payload to send.
-     */
-    sendMessage(message: GenericConfig): void {
+    public override updateConfiguration(configuration: Partial<GenericConfig>, ignoreSelf: boolean = false): void {
+      const nextConfiguration = {
+        ...this.configuration,
+        ...configuration,
+        lastUpdatedAt: new Date(),
+      };
+      localStorage.setItem(`${this.key()}`, JSON.stringify(nextConfiguration));
+      this.updateAllClientsConfig(this.configuration, ignoreSelf);
+    }
+
+    private updateAllClientsConfig(message: GenericConfig, ignoreSelf: boolean): void {
       this.webSocketService.send<GenericConfig>({
         topic: this.key(),
-        payload: message
+        payload: message,
+        ignoreSelf, // Prevents the message from being sent back to the same client,
       });
     }
   };
 }
 
-/**
- * An interface that defines the WebSocket-related methods added by the `Socketable` mixin.
- *
- * @template GenericConfig - The type of the WebSocket message payload.
- */
-interface SocketableInterface<GenericConfig> {
-  /**
-   * Subscribes to a WebSocket topic.
-   *
-   * @returns An observable that emits messages from the WebSocket topic.
-   */
+interface SocketableInterface<GenericConfig extends BaseMessagePayload> {
   listenTopic(): Observable<Message<GenericConfig>>;
 
-  /**
-   * Sends a message to the WebSocket topic.
-   *
-   * @param message - The message payload to send.
-   */
-  sendMessage(message: GenericConfig): void;
+  updateConfiguration(configuration: Partial<GenericConfig>, ignoreSelf?: boolean): void;
 }
 
-/**
- * A utility type that combines a class with the `SocketableInterface`.
- *
- * @template T - The type of the class being extended.
- */
 export type WithSocketable<T extends { configuration: BaseMessagePayload }> =
   T & SocketableInterface<T['configuration']>;
+

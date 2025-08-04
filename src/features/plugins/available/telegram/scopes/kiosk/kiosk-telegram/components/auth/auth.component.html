@@ -1,0 +1,10 @@
+@let qrCodeToken = (qrCode | async);
+
+@if (qrCodeToken) {
+  <qrcode
+    [qrdata]="qrCodeToken.payload.qrCodeToken"
+    [width]="200"
+  ></qrcode>
+} @else {
+  loading
+}

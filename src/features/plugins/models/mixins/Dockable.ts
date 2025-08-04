@@ -1,32 +1,23 @@
-import {BaseMessagePayload} from "../../entities/_index";
-import {Constructor} from '../../entities/constructor';
+import {BaseMessagePayload, Constructor} from "../../entities";
 
 export function Dockable<
+  GenericConfig extends BaseMessagePayload,
   TBase extends Constructor<
     {
-      configuration: BaseMessagePayload;
-      sendMessage(config: any): void;
+      configuration: GenericConfig;
+      updateConfiguration<GenericConfig>(newProps: Partial<GenericConfig>): void;
     }>
 >(Base: TBase) {
-  return class extends Base {
-    toggleDock(): void {
-      const currentConfig = this.configuration;
-      const newConfig = {...currentConfig, dockActive: !currentConfig.dockActive};
-      this.sendMessage(newConfig);
-    }
-
-    setDockActive(): void {
-      const currentConfig = this.configuration;
-      const newConfig = {...currentConfig, dockActive: true};
-      this.sendMessage(newConfig);
+  return class extends Base implements DockableInterface {
+    public toggleDock(): void {
+      this.updateConfiguration({dockActive: !this.configuration.dockActive});
     }
   };
 }
 
-interface Mixin {
+interface DockableInterface {
   toggleDock(): void;
-
-  setDockActive(): void;
 }
 
-export type WithDockable<T> = T & Mixin;
+export type WithDockable<T extends { configuration: { dockActive: boolean } }> =
+  T & DockableInterface;

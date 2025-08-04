@@ -1,34 +1,29 @@
-import {BaseMessagePayload} from "../../entities/_index";
-import {Constructor} from '../../entities/constructor';
-
+import {BaseMessagePayload, Constructor} from "../../entities";
 
 export function Kioskable<
+  GenericConfig extends BaseMessagePayload,
   TBase extends Constructor<
     {
-      configuration: BaseMessagePayload;
-      sendMessage(config: any): void
+      configuration: GenericConfig;
+      updateConfiguration<GenericConfig>(newProps: Partial<GenericConfig>): void;
     }>
 >(Base: TBase) {
-  return class extends Base {
-    toggleKiosk(): void {
-      const currentConfig = this.configuration;
-      const newConfig = {...currentConfig, kioskActive: !currentConfig.kioskActive};
-      this.sendMessage(newConfig);
+  return class extends Base implements KioskableInterface {
+    public toggleKiosk(): void {
+      this.updateConfiguration({kioskActive: !this.configuration.kioskActive});
     }
 
-    setKioskActive(): void {
-      const currentConfig = this.configuration;
-      const newConfig = {...currentConfig, kioskActive: true};
-      this.sendMessage(newConfig);
+    public setKioskActive(): void {
+      this.updateConfiguration({kioskActive: true});
     }
   };
 }
 
-interface Mixin {
+interface KioskableInterface {
   toggleKiosk(): void;
 
   setKioskActive(): void;
 }
 
-export type WithKioskable<T> = T & Mixin;
-
+export type WithKioskable<T extends { configuration: { kioskActive: boolean } }> =
+  T & KioskableInterface;

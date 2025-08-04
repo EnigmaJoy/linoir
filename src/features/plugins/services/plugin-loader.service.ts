@@ -1,21 +1,20 @@
 import {ComponentRef, Injectable, QueryList, Type, ViewContainerRef} from '@angular/core';
 import {WebsocketService} from '../../../common/services/websocket.service';
 import {RenderType} from '../../render/enums/render-type';
-import {PluginManifest, PluginVariant} from '../entities/_index';
+import {PluginManifest, PluginVariant, PossiblePlugins} from '../entities';
 import {PLUGINS} from '../utils/plugins.manifest';
-import {PossiblePlugin} from '../entities/possible-plugin';
 
 interface LoadedAngularComponentWithPluginClass {
   component: Type<unknown>;
-  plugin: PossiblePlugin;
+  plugin: PossiblePlugins;
 }
 
 
 @Injectable()
 export class PluginLoaderService {
-  private readonly _plugins: PossiblePlugin[] = [];
+  private readonly _plugins: PossiblePlugins[] = [];
 
-  public get plugins(): PossiblePlugin[] {
+  public get plugins(): PossiblePlugins[] {
     return this._plugins;
   }
 
@@ -28,8 +27,8 @@ export class PluginLoaderService {
       for (const v of manifest.variants) {
         if (manifest.class) {
           // Check if plugin instance already exists
-          const found: PossiblePlugin | undefined = this._plugins.find(
-            (p: PossiblePlugin): boolean => p instanceof manifest.class
+          const found: PossiblePlugins | undefined = this._plugins.find(
+            (p: PossiblePlugins): boolean => p instanceof manifest.class
           );
           if (found) {
             found.addVariant(v.scope, v);
@@ -47,7 +46,7 @@ export class PluginLoaderService {
   }
 
   private async getComponent(
-    plugin: PossiblePlugin,
+    plugin: PossiblePlugins,
     scope: RenderType
   ): Promise<LoadedAngularComponentWithPluginClass> {
     const manifest: PluginManifest | undefined = PLUGINS.find(
@@ -64,7 +63,7 @@ export class PluginLoaderService {
     );
     if (!variant) {
       throw new Error(
-        `Variant for scope '${plugin.scope(scope)}' and component '${plugin.UIComponentClassName(scope)}' not found`
+        `Variant not found ${plugin.key()} - ${scope}`
       );
     }
 
@@ -87,7 +86,7 @@ export class PluginLoaderService {
    * Calls the provided callback on configuration change.
    */
   public initializeConfigurationChangeListeners(callback: () => void | Promise<void>): void {
-    this.plugins.forEach((plugin: PossiblePlugin): void => {
+    this.plugins.forEach((plugin: PossiblePlugins): void => {
       plugin.configurationChangeEvent.subscribe((): void => {
         if (callback) {
           requestAnimationFrame(() => {
@@ -102,14 +101,19 @@ export class PluginLoaderService {
    * Renders the given plugins into the provided Angular view containers according to scope.
    */
   public async render(
-    plugins: PossiblePlugin[],
+    plugins: PossiblePlugins[],
     containers: QueryList<ViewContainerRef>,
     scope: RenderType
   ): Promise<void> {
-    for (let i = 0; i < plugins.length; i++) {
-      const plugin = plugins[i];
-      const res = await this.getComponent(plugin, scope);
-      const container = containers.get(i);
+    for (let i: number = 0; i < plugins.length; i++) {
+      const plugin: PossiblePlugins = plugins[i];
+      const res: LoadedAngularComponentWithPluginClass = await this.getComponent(plugin, scope);
+
+      if (!res) {
+        return;
+      }
+
+      const container: ViewContainerRef | undefined = containers.get(i);
 
       if (!container) {
         console.warn(`No container found for plugin at index ${i}`);

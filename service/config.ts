@@ -1,16 +1,16 @@
-const fs = require('fs');
-const path = require('path');
-const ip = require('ip');
+import path from 'node:path';
+import ip from 'ip';
+import * as fs from 'node:fs';
 
 const publicPath = path.resolve(__dirname, '../public');
 const configPath = path.join(publicPath, 'server-config.json');
 
-function getLocalIp() {
-  const localIp = ip.address();
-  return localIp || '127.0.0.1';
+export function getLocalIp(): string {
+  const localIp: string = ip.address();
+  return localIp ?? '127.0.0.1';
 }
 
-function writeServerConfig(ip) {
+export function writeServerConfig(ip: string): void {
   try {
     if (!fs.existsSync(publicPath)) {
       fs.mkdirSync(publicPath, {recursive: true});
@@ -21,8 +21,3 @@ function writeServerConfig(ip) {
     console.error('Error writing server config:', error);
   }
 }
-
-module.exports = {
-  getLocalIp,
-  writeServerConfig,
-};
